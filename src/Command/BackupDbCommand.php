@@ -200,12 +200,12 @@ class BackupDbCommand extends Command
     {
         if ($config['scheme'] === 'mysql') {
             $config = array_merge([
-                'port' => 3306,
-                'host' => 'localhost',
+                'host' => $config['host'] ? '--host=' . $config['host'] : '',
+                'port' => $config['port'] ? '--port=' . $config['port'] : '',
             ], $config);
 
             return Text::insert(
-                'mysqldump --user=:username --password=:password --port=:port --host=:host :database',
+                'mysqldump --user=:username --password=:password :port :host :database',
                 $config
             );
         }
