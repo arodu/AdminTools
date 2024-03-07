@@ -100,12 +100,12 @@ class BackupDbCommand extends Command
     {
         $io->out('BackupEmail command');
 
-        $emailBackupList = Configure::read('emailBackupList');
+        $emailBackupList = array_filter(Configure::read('emailBackupList'));
 
         if (empty($emailBackupList)) {
             $io->error('Email backup list not configured');
 
-            return self::CODE_ERROR;
+            return self::CODE_SUCCESS;
         }
 
         try {
