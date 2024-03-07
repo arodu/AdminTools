@@ -44,11 +44,18 @@ class BackupDbCommand extends Command
             'short' => 'g',
         ]);
 
-        $parser->addOption('filename', [
-            'help' => 'Filename to save the backup',
+        $parser->addOption('compress', [
+            'help' => 'Compress the backup',
+            'required' => false,
+            'default' => 'gzip',
+            'short' => 'c',
+        ]);
+
+        $parser->addOption('name', [
+            'help' => 'Name to save the backup',
             'required' => false,
             'default' => null,
-            'short' => 'f',
+            'short' => 'n',
         ]);
 
         $parser->addOption('sendEmail', [
@@ -100,6 +107,8 @@ class BackupDbCommand extends Command
     {
         $io->out('BackupEmail command');
 
+        debug($args->getOptions());
+
         $emailBackupList = array_filter(Configure::read('emailBackupList'));
 
         if (empty($emailBackupList)) {
@@ -113,7 +122,7 @@ class BackupDbCommand extends Command
             $gzip = true; //$args->getOption('gzip') ?? true;
             $config = \Cake\Datasource\ConnectionManager::get($datasource)->config();
             $now = FrozenTime::now();
-            $name = $args->getOption('filename') ?? $datasource;
+            $name = $args->getOption('name') ?? $datasource;
             $filePath = TMP . $this->getFile([
                 'filename' => $name,
                 'gzip' => $gzip,
@@ -150,112 +159,36 @@ class BackupDbCommand extends Command
     }
 
     /**
-     * @param array $config
-     * @param string $filename
-     * @param boolean $gzip
-     * @return string
+     * Sends an email with the backup file attached.
+     *
+     * @param array $options An array of options for sending the email.
+     *   - emailBackupList: The list of email addresses to send the backup to.
+     *   - name: The name of the backup.
+     *   - date: The date of the backup.
+     *   - file: The backup file information.
+     *   - datasource: The datasource used for the backup.
+     * @return void
      */
-    protected function getScript(array $config, string $file, bool $gzip = true): string
-    {
-        $script = $this->getDumpScript($config);
-
-        if ($gzip) {
-            $script .= ' | gzip -c > ' . $file;
-        } else {
-            $script .= ' > ' . $file;
-        }
-
-        return $script;
-    }
-
-    /**
-     * @param array $config
-     * @param string|null $filename
-     * @param boolean $gzip
-     * @return string
-     */
-    protected function getFile(array $options = []): string
-    {
-        $options = array_merge([
-            'filename' => 'default',
-            'gzip' => true,
-            'date' => null,
-        ], $options);
-
-        return Text::insert(
-            ':filename:date.sql:gz',
-            [
-                'filename' => $options['filename'],
-                'date' => $options['date'] ? '_' . $options['date'] : '',
-                'gz' => $options['gzip'] ? '.gz' : '',
-            ]
-        );
-    }
-
-    /**
-     * @param array $config
-     * @return string
-     */
-    protected function getDumpScript(array $config): string
-    {
-        if ($config['scheme'] === 'mysql') {
-            $config['host'] = $config['host'] != 'localhost' ? '--host=' . $config['host'] : '';
-            $config['port'] = $config['port'] != '3306' ? '--port=' . $config['port'] : '';
-
-            return Text::insert(
-                'mysqldump --user=":username" --password=":password" :port :host :database',
-                $config
-            );
-        }
-
-        if ($config['scheme'] === 'pgsql') {
-            $config = array_merge([
-                'port' => 5432,
-                'host' => 'localhost',
-            ], $config);
-            
-            return Text::insert(
-                'pg_dump --username=:username --port=:port --host=:host :database',
-                $config
-            );
-        }
-
-        if ($config['scheme'] === 'sqlite') {
-            return Text::insert(
-                'sqlite3 :database .dump',
-                $config
-            );
-        }
-
-        throw new \RuntimeException('Scheme ' . $config['scheme'] . ' not supported');
-    }
-
     protected function sendEmail(array $options = []): void
     {
-        $mailer = new \Cake\Mailer\Mailer('default');
+        $emailConfig = Configure::read('AdminTools.backup.email');
+
+        $mailer = new \Cake\Mailer\Mailer($emailConfig['config'] ?? 'default');
         $mailer
             ->setTo($options['emailBackupList'])
-            ->setSubject('Backup ' . $options['name'] . ' ' . $options['date']->format('Y-m-d H:i:s'))
-            ->setEmailFormat('html')
+            ->setSubject($emailConfig['subject'] ?? __('Backup {0} {1}', $options['name'], $options['date']->format('Y-m-d H:i:s')))
+            ->setEmailFormat($emailConfig['format'] ?? 'both')
             ->setAttachments([$options['file']['path']])
             ->setViewVars([
+                'name' => $options['name'],
                 'file' => $options['file'],
                 'date' => $options['date'],
                 'emailBackupList' => $options['emailBackupList'],
                 'datasource' => $options['datasource'],
             ])
             ->viewBuilder()
-                ->setTemplate('AdminTools.backup')
-                ->setLayout('AdminTools.default');
+                ->setTemplate($emailConfig['template'] ?? 'AdminTools.default')
+                ->setLayout($emailConfig['layout'] ?? 'default');
         $mailer->deliver();
-    }
-
-    protected function fileInfo(string $file): array
-    {
-        $info = pathinfo($file);
-        $info['size'] = Number::toReadableSize(filesize($file));
-        $info['path'] = $info['dirname'] . DS . $info['basename'];
-        
-        return $info;
     }
 }
