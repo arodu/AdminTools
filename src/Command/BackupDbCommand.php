@@ -199,10 +199,8 @@ class BackupDbCommand extends Command
     protected function getDumpScript(array $config): string
     {
         if ($config['scheme'] === 'mysql') {
-            $config = array_merge([
-                'host' => $config['host'] ? '--host=' . $config['host'] : '',
-                'port' => $config['port'] ? '--port=' . $config['port'] : '',
-            ], $config);
+            $config['host'] = $config['host'] ? '--host=' . $config['host'] : '';
+            $config['port'] = $config['port'] ? '--port=' . $config['port'] : '';
 
             return Text::insert(
                 'mysqldump --user=":username" --password=":password" :port :host :database',
