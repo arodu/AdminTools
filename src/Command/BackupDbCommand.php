@@ -205,7 +205,7 @@ class BackupDbCommand extends Command
             ], $config);
 
             return Text::insert(
-                'mysqldump --user=:username --password=:password :port :host :database',
+                'mysqldump --user=":username" --password=":password" :port :host :database',
                 $config
             );
         }
