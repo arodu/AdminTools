@@ -80,14 +80,14 @@ class BackupDb
         $options = array_merge([
             'filename' => 'default',
             'gzip' => true,
-            'date' => null,
         ], $options);
 
         return Text::insert(
-            ':filename:date.sql:gz',
+            ':filename_:datasource_:date.sql:gz',
             [
                 'filename' => $options['filename'],
-                'date' => $options['date'] ? '_' . $options['date'] : '',
+                'date' => $options['date']->format('YmdHis'),
+                'datasource' => $options['datasource'],
                 'gz' => $options['gzip'] ? '.gz' : '',
             ]
         );
@@ -128,6 +128,14 @@ class BackupDb
             self::checkCommand('sqlite3');
             return Text::insert(
                 'sqlite3 :database .dump',
+                $config
+            );
+        }
+
+        if ($config['scheme'] === 'sqlserver') {
+            self::checkCommand('sqlcmd');
+            return Text::insert(
+                'sqlcmd -S :host -U :username -P :password -d :database -Q "BACKUP DATABASE :database TO DISK = \':file\'"',
                 $config
             );
         }

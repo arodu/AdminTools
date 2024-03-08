@@ -9,9 +9,11 @@ use Cake\Console\Arguments;
 use Cake\Console\ConsoleIo;
 use Cake\Console\ConsoleOptionParser;
 use Cake\Core\Configure;
+use Cake\Datasource\ConnectionManager;
 use Cake\I18n\FrozenTime;
-use Cake\I18n\Number;
-use Cake\Utility\Text;
+use Cake\Mailer\Mailer;
+use Cake\Utility\Hash;
+use Exception;
 
 /**
  * BackupDb command.
@@ -29,63 +31,49 @@ class BackupDbCommand extends Command
     {
         $parser = parent::buildOptionParser($parser);
 
-        $parser->addOption('datasource', [
-            'help' => 'Datasource to backup',
-            'required' => true,
-            'default' => 'default',
-            'short' => 'd',
-        ]);
+        $settings = Configure::read('AdminTools.backup');
 
-        $parser->addOption('gzip', [
-            'help' => 'Compress the backup',
-            'required' => false,
-            'boolean' => true,
-            'default' => true,
-            'short' => 'g',
-        ]);
-
-        $parser->addOption('compress', [
-            'help' => 'Compress the backup',
-            'required' => false,
-            'default' => 'gzip',
-            'short' => 'c',
-        ]);
-
-        $parser->addOption('name', [
-            'help' => 'Name to save the backup',
-            'required' => false,
-            'default' => null,
-            'short' => 'n',
-        ]);
-
-        $parser->addOption('sendEmail', [
-            'help' => 'Send email with the backup',
-            'required' => false,
-            'boolean' => true,
-            'default' => true,
-            'short' => 's',
-        ]);
-
-        $parser->addOption('emailBackupList', [
-            'help' => 'List of emails to send the backup, separated by comma',
-            'required' => false,
-            'default' => null,
-            'short' => 'e',
-        ]);
-
-        $parser->addOption('removeFileAfterSend', [
-            'help' => 'Remove the file after send the email',
-            'required' => false,
-            'boolean' => true,
-            'default' => true,
-            'short' => 'r',
-        ]);
-
-        $parser->addOption('path', [
-            'help' => 'Path to save the backup',
-            'required' => false,
-            'default' => TMP,
-            'short' => 'p',
+        $parser->addOptions([
+            'datasource' => [
+                'help' => 'Datasource to backup',
+                'default' => Hash::get($settings, 'datasource', 'default'),
+                'choices' => ConnectionManager::configured(),
+                'short' => 'd',
+            ],
+            'compress' => [
+                'help' => 'Compress the backup',
+                'default' => Hash::get($settings, 'compress', 'gzip'),
+                'choices' => ['gzip', 'zip', 'rar', 'none'],
+                'short' => 'c',
+            ],
+            'name' => [
+                'help' => 'backup name identifier',
+                'default' => Hash::get($settings, 'name', 'default'),
+                'short' => 'n',
+            ],
+            'sendEmail' => [
+                'help' => 'Send email with the backup',
+                'boolean' => true,
+                'default' => Hash::get($settings, 'email.enable', true),
+                'short' => 'e',
+            ],
+            'removeFile' => [
+                'help' => 'Remove the file after execution of the command',
+                'boolean' => true,
+                'default' => Hash::get($settings, 'removeFile', true),
+                'short' => 'r',
+            ],
+            'path' => [
+                'help' => 'Path to save the backup',
+                'default' => Hash::get($settings, 'path', TMP),
+            ],
+            'emailList' => [
+                'help' => 'List of emails to send the backup, separated by comma',
+            ],
+            'emailConfig' => [
+                'help' => 'Email configuration to send the backup',
+                'default' => Hash::get($settings, 'email.config', 'default'),
+            ],
         ]);
 
         $parser->setDescription([
@@ -105,90 +93,179 @@ class BackupDbCommand extends Command
      */
     public function execute(Arguments $args, ConsoleIo $io)
     {
-        $io->out('BackupEmail command');
-
-        debug($args->getOptions());
-
-        $emailBackupList = array_filter(Configure::read('emailBackupList'));
-
-        if (empty($emailBackupList)) {
-            $io->warning('Email backup list not configured');
-
-            return self::CODE_SUCCESS;
-        }
-
         try {
+            // get options
+            // prepare options
+            // separe options by datasource
+            // execute script by datasource
+            // send email
+            // remove files
+
+
+            $io->out('BackupEmail command');
+
+            $settings = Configure::read('AdminTools.backup');
+            $options = $this->prepareOptions($args->getOptions(), $settings);
+
+            //debug($settings);
+            debug($options);
+            exit();
+
+            $io->success('output: QUIET', 1, ConsoleIo::QUIET);
+            $io->success('output: NORMAL', 1, ConsoleIo::NORMAL);
+            $io->success('output: VERBOSE', 1, ConsoleIo::VERBOSE);
+            $io->hr();
+
+            $io->out('out');
+            $io->info('info');
+            $io->comment('comment');
+            $io->warning('warning');
+            $io->error('error');
+            $io->success('success');
+            //$io->abort('abort');
+            $io->hr();
+
+            $io->out('start progress', 1, ConsoleIo::QUIET);
+            for ($i = 0; $i < 10; $i++) {
+                $io->overwrite('overwrite ' . ($i * 10) . '%', 0);
+                sleep(1);
+            }
+            $io->overwrite('overwrite 100%', 1);
+            $io->success('end progress', 1, ConsoleIo::QUIET);
+
+            //debug($settings);
+            //debug($options);
+            exit();
+
+            if ($settings['enabled'] ?? false) {
+                $io->warning(__('Backup DB is disabled, enable it in config/admin_tools.php'));
+
+                return self::CODE_SUCCESS;
+            }
+
             $datasource = $args->getOption('datasource');
             $gzip = true; //$args->getOption('gzip') ?? true;
-            $config = \Cake\Datasource\ConnectionManager::get($datasource)->config();
-            $now = FrozenTime::now();
+            $dbConfig = \Cake\Datasource\ConnectionManager::get($datasource)->config();
+            $date = FrozenTime::now();
             $name = $args->getOption('name') ?? $datasource;
             $filePath = TMP . $this->getFile([
                 'filename' => $name,
                 'gzip' => $gzip,
-                'date' => $now->format('YmdHis'),
+                'date' => $date->format('YmdHis'),
             ]);
 
             $io->out('Datasource: ' . $datasource);
 
-            $bash = $this->getScript($config, $filePath, $gzip);
-            shell_exec($bash);
-            $fileInfo = $this->fileInfo($filePath);
-            $io->success('Backup done: ' . $fileInfo['path'] . ' (' . $fileInfo['size'] . ')');
+            $bash = $this->dumpScript($options, $settings, $io);
+            if (empty($bash)) {
+                throw new Exception(__('No script to execute'));
+            }
 
-            $this->sendEmail([
-                'file' => $fileInfo,
-                'date' => $now,
-                'emailBackupList' => $emailBackupList,
-                'datasource' => $datasource,
-                'name' => $name,
-            ]);
-            $io->success('Email sent: [' . implode(', ', $emailBackupList) . ']');
+            shell_exec($bash);
+            $file = $this->fileInfo($filePath);
+            $io->success('Backup done: ' . $file['path'] . ' (' . $file['size'] . ')', 1, ConsoleIo::VERBOSE);
+
+
+            //$backupData = compact('emailList', 'name', 'date', 'file', 'datasource');
+
+            if ($settings['afterExecScript'] && is_callable($settings['afterExecScript'])) {
+                $options = $settings['afterExecScript']($options, $io);
+            }
+
+            if (Hash::get($options, 'sendEmail', false) && !empty($options['emailList'])) {
+                $this->sendEmail($options, $io);
+            }
 
             return self::CODE_SUCCESS;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $io->error($e->getMessage());
 
             return self::CODE_ERROR;
         } finally {
-            if (file_exists($filePath ?? '')) {
+            if (($options['removeFile'] ?? true) && file_exists($filePath ?? '')) {
                 unlink($filePath);
                 $io->success('File removed: ' . $filePath);
             }
         }
     }
 
+
     /**
-     * Sends an email with the backup file attached.
+     * Sends an email with backup details.
      *
-     * @param array $options An array of options for sending the email.
-     *   - emailBackupList: The list of email addresses to send the backup to.
-     *   - name: The name of the backup.
-     *   - date: The date of the backup.
-     *   - file: The backup file information.
-     *   - datasource: The datasource used for the backup.
+     * @param array $options The options for sending the email.
+     * - emailBackupList: array List of emails to send the backup.
+     * - name: string Name of the backup.
+     * - date: \Cake\I18n\FrozenTime Date of the backup.
+     * - file: array File information.
+     * - datasource: string Datasource of the backup.
+     * - subject: string|null Subject of the email.
+     * @param ConsoleIo $io The ConsoleIo object for displaying output.
      * @return void
      */
-    protected function sendEmail(array $options = []): void
+    protected function sendEmail(array $options, ConsoleIo $io): void
     {
-        $emailConfig = Configure::read('AdminTools.backup.email');
+        $emailSettings = Configure::read('AdminTools.backup.email');
 
-        $mailer = new \Cake\Mailer\Mailer($emailConfig['config'] ?? 'default');
+        debug($options);
+        debug($emailSettings);
+        exit();
+
+        $mailer = new Mailer($options['emailConfig'] ?? 'default');
         $mailer
-            ->setTo($options['emailBackupList'])
-            ->setSubject($emailConfig['subject'] ?? __('Backup {0} {1}', $options['name'], $options['date']->format('Y-m-d H:i:s')))
-            ->setEmailFormat($emailConfig['format'] ?? 'both')
-            ->setAttachments([$options['file']['path']])
-            ->setViewVars([
-                'name' => $options['name'],
-                'file' => $options['file'],
-                'date' => $options['date'],
-                'emailBackupList' => $options['emailBackupList'],
-                'datasource' => $options['datasource'],
-            ])
+            ->setTo(Hash::get($options, 'emailList'))
+            ->setSubject(Hash::get($emailSettings, 'email.subject') ?? __('Backup {0} {1}', $options['name'], $options['date']->format('Y-m-d H:i:s')))
+            ->setEmailFormat(Hash::get($emailSettings, 'format') ?? 'both')
+            ->setAttachments([Hash::get($emailSettings, 'file.path')])
+            ->setViewVars($options)
             ->viewBuilder()
-                ->setTemplate($emailConfig['template'] ?? 'AdminTools.default')
-                ->setLayout($emailConfig['layout'] ?? 'default');
+            ->setTemplate($emailSettings['template'] ?? 'AdminTools.default')
+            ->setLayout($emailSettings['layout'] ?? 'default');
         $mailer->deliver();
+
+        $io->success('Email sent to: [' . implode(', ', Hash::get($options, 'emailList')) . ']');
+    }
+
+    /**
+     * @param array $options
+     * @param array $settings
+     * @param \Cake\Console\ConsoleIo $io
+     * @return string
+     */
+    protected function dumpScript(array $options, array $settings, ConsoleIo $io): string
+    {
+        if ($settings['dumpScript'] && is_callable($settings['dumpScript'])) {
+            return $settings['dumpScript']($options, $io);
+        }
+
+        //$io->out('Dump script');
+        //return 'mysqldump -u root mydb > /tmp/mydb.sql';
+
+        return '';
+    }
+
+    /**
+     * @param array $options
+     * @param array $settings
+     * @return array
+     */
+    protected function prepareOptions(array $options, array $settings): array
+    {
+        if (is_string($options['emailList'])) {
+            $options['emailList'] = explode(',', $options['emailList']);
+        }
+        $options['datetime'] = FrozenTime::now();
+        $options['name'] = $options['name'] ?? $options['datasource'] ?? 'default';
+        $options['path'] = $options['path'] ?? TMP;
+
+        return $options;
+    }
+
+    protected function removeFiles(array $options, ConsoleIo $io): void
+    {
+        if (file_exists($options['file'] ?? '')) {
+            unlink($options['file']);
+            $io->success('File removed: ' . $options['file']);
+        }
     }
 }

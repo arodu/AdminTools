@@ -5,10 +5,13 @@ namespace AdminTools;
 
 use Cake\Console\CommandCollection;
 use Cake\Core\BasePlugin;
+use Cake\Core\Configure;
 use Cake\Core\ContainerInterface;
 use Cake\Core\PluginApplicationInterface;
 use Cake\Http\MiddlewareQueue;
+use Cake\Log\Log;
 use Cake\Routing\RouteBuilder;
+use Exception;
 
 /**
  * Plugin for AdminTools
@@ -26,6 +29,12 @@ class AdminToolsPlugin extends BasePlugin
      */
     public function bootstrap(PluginApplicationInterface $app): void
     {
+        try {
+            Configure::load('AdminTools.admin_tools');
+            Configure::load('admin_tools');
+        } catch (Exception $e) {
+            Log::debug('AdminTools: ' . $e->getMessage());
+        }
     }
 
     /**
