@@ -133,7 +133,7 @@ class BackupDbCommand extends Command
 
             return self::CODE_ERROR;
         } finally {
-            foreach ($backupDbList as $backupDb) {
+            foreach ($backupDbList ?? [] as $backupDb) {
                 if ($backupDb->removeFile()) {
                     $io->success('File removed: ' . $backupDb->label(), 1, ConsoleIo::VERBOSE);
                 }
