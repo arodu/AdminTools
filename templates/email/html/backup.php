@@ -7,23 +7,18 @@
  */
 ?>
 
-<h1><?= __('DB backup email') ?></h1>
+<h1><?= __('Backup: {0}', $name) ?></h1>
 
-<p>
-    <?= __('The database backup has been sent to the following email addresses:') ?>
-<ul>
-    <?php foreach ($emailBackupList as $email) : ?>
-        <li><?= $email ?></li>
-    <?php endforeach; ?>
-</ul>
-</p>
-
-<p>
-    <strong><?= __('Backup file: ') ?></strong>
-    <?= sprintf('%s (%s)', $file['basename'], $file['size']) ?>
-</p>
-
-<p>
-    <strong><?= __('Created at: ') ?></strong>
-    <?= $date->format('Y-m-d H:i:s') ?>
-</p>
+<?php foreach ($backups as $backup) : ?>
+    <p>
+        <b><?= __('Datasource: ') ?></b><?= $backup['datasource']['name'] ?><br>
+        <b><?= __('Database: ') ?></b><?= $backup['datasource']['database'] ?><br>
+        <b><?= __('Host: ') ?></b><?= $backup['datasource']['host'] ?><br>
+        <b><?= __('Port: ') ?></b><?= $backup['datasource']['port'] ?><br>
+        <b><?= __('Scheme: ') ?></b><?= $backup['datasource']['scheme'] ?><br>
+        <b><?= __('Compress: ') ?></b><?= $backup['compress'] ?><br>
+        <b><?= __('File: ') ?></b><?= $backup['fileinfo']['basename'] ?><br>
+        <b><?= __('Size: ') ?></b><?= $backup['fileinfo']['size'] ?><br>
+        <b><?= __('Created at: ') ?></b><?= $backup['datetime']->format('Y-m-d H:i:s') ?><br>
+    </p>
+<?php endforeach; ?>

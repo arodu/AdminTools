@@ -4,20 +4,20 @@ use Cake\Console\ConsoleIo;
 
 return [
     'AdminTools' => [
-        'backup' => [
+        'backupDb' => [
             /**
              * @var bool
              * 
              * Enable or disable the backup
              */
-            'enabled' => env('AT_BACKUP_ENABLED') ?? true,
+            'enabled' => filter_var(env('AT_BACKUP_ENABLED', true), FILTER_VALIDATE_BOOLEAN),
 
             /**
              * @var string
              * 
              * The name of the backup
              */
-            'name' => env('AT_BACKUP_NAME') ?? 'backup',
+            'name' => env('AT_BACKUP_NAME') ?? 'backup-name',
 
             /**
              * @var string
@@ -29,8 +29,8 @@ return [
             /**
              * @var string|null|false
              * 
-             * The compress method to use
-             * gzip, zip, rar, none
+             * The compress method to use: [gzip, zip, rar]
+             * for none use [none, false or null]
              */
             'compress' => env('AT_BACKUP_COMPRESS') ?? 'gzip',
 
@@ -40,6 +40,28 @@ return [
              * The path where the backup file will be saved
              */
             'path' => env('AT_BACKUP_PATH') ?? TMP,
+
+            /**
+             * @var string
+             * 
+             * The file template to use
+             * - :name = backup name
+             * - :datasource = datasource name
+             * - :database = database name
+             * - :date = current date
+             * - :datetime = current datetime
+             * - :host = database host
+             * - :port = database port
+             * - :scheme = database scheme
+             */
+            'fileTemplate' => env('AT_BACKUP_FILE_TEMPLATE') ?? ':name_:database_:datetime',
+
+            /**
+             * @var string|null|false
+             * 
+             * The file extension to use, default is sql
+             */
+            'fileExtension' => env('AT_BACKUP_FILE_EXTENSION') ?? 'sql',
 
             /**
              * @var bool
@@ -118,7 +140,7 @@ return [
              * The email format to use
              * html, text, both
              */
-            'format' => env('AT_BACKUP_EMAIL_FORMAT') ?? 'both',
+            'format' => env('AT_BACKUP_EMAIL_FORMAT') ?? 'html',
 
             /**
              * @var array|string|null
@@ -139,7 +161,7 @@ return [
              * 
              * The email template
              */
-            'template' => env('AT_BACKUP_EMAIL_TEMPLATE') ?? 'AdminTools.default',
+            'template' => env('AT_BACKUP_EMAIL_TEMPLATE') ?? 'AdminTools.backup',
 
             /**
              * @var string
