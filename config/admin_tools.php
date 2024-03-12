@@ -54,7 +54,7 @@ return [
              * - :port = database port
              * - :scheme = database scheme
              */
-            'fileTemplate' => env('AT_BACKUP_FILE_TEMPLATE') ?? ':name_:datetime',
+            'fileTemplate' => env('AT_BACKUP_FILE_TEMPLATE') ?? ':name_:datasource_:datetime',
 
             /**
              * @var string|null|false
